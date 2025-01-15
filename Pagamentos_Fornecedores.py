@@ -67,13 +67,13 @@ def puxar_aba_simples(id_gsheet, nome_aba, nome_df):
 
 def tratar_colunas_df_tarifario():
 
-    for coluna in ['Bus', 'Micro', 'Van Alongada', 'Van', 'Utilitario', 'Conjugado Bus', 'Conjugado Micro', 'Conjugado Van Alongada', 'Conjugado Van', 'Conjugado Utilitario',
-                   'Bus GIVALDO', 'Micro GIVALDO', 'Van Alongada GIVALDO', 'Van GIVALDO', 'Utilitario GIVALDO', 'Conjugado Bus GIVALDO', 'Conjugado Micro GIVALDO', 'Conjugado Van Alongada GIVALDO', 
-                   'Conjugado Van GIVALDO', 'Conjugado Utilitario GIVALDO']:
+    for coluna in st.session_state.df_tarifario.columns:
 
-        st.session_state.df_tarifario[coluna] = (st.session_state.df_tarifario[coluna].str.replace('.', '', regex=False).str.replace(',', '.', regex=False))
+        if coluna!='Servico':
 
-        st.session_state.df_tarifario[coluna] = pd.to_numeric(st.session_state.df_tarifario[coluna])
+            st.session_state.df_tarifario[coluna] = (st.session_state.df_tarifario[coluna].str.replace('.', '', regex=False).str.replace(',', '.', regex=False))
+
+            st.session_state.df_tarifario[coluna] = pd.to_numeric(st.session_state.df_tarifario[coluna])
 
 def puxar_tarifario_fornecedores():
 
@@ -318,7 +318,7 @@ def identificar_trf_conjugados(df_escalas_pag):
 
                         df_escalas_pag.at[index_2, 'Servico Conjugado'] = 'X'
 
-                    elif regiao=='Aracaju' and regiao==regiao_2 and primeiro_trf=='IN' and segundo_trf=='OUT' and (hora_voo_out_outros - hora_voo_in_outros <= timedelta(hours=1)):
+                    elif regiao=='Aracaju' and regiao==regiao_2 and primeiro_trf=='IN' and segundo_trf=='OUT' and (hora_voo_out_outros - hora_voo_in_outros <= timedelta(hours=1, minutes=30)):
 
                         df_escalas_pag.at[index_1, 'Servico Conjugado'] = 'X'
 
@@ -475,22 +475,12 @@ def verificar_tarifarios_especifico_fornecedor(df_escalas_pag, nome_fornecedor):
 
         st.stop()
 
-def ajustar_verificar_tarifa_fornecedor_especifico(df_escalas_pag, nome_fornecedor, palavra_chave):
+def ajustar_verificar_tarifa_fornecedor_especifico(df_escalas_pag):
 
-    # Ajustando nome de fornecedor SALVATORE
-
-    df_escalas_pag = ajustar_nome_fornecedor(df_escalas_pag, nome_fornecedor, palavra_chave)
-
-    # Gerando coluna valor do fornecedor SALVATORE
-
-    df_escalas_pag['Valor Final'] = df_escalas_pag.apply(lambda row: row[f"Conjugado {row['Tipo Veiculo']} {nome_fornecedor}"] 
-                                                            if row['Servico Conjugado'] == 'X' and row['Fornecedor Motorista'] == nome_fornecedor
-                                                            else row[f"{row['Tipo Veiculo']} {nome_fornecedor}"] 
-                                                            if row['Servico Conjugado'] != 'X' and row['Fornecedor Motorista'] == nome_fornecedor else row['Valor Final'], axis=1)
-    
-    # Verificando se os serviços prestados pelo fornecedor SALVATORE estão tarifados
-
-    verificar_tarifarios_especifico_fornecedor(df_escalas_pag, nome_fornecedor)
+    df_escalas_pag['Valor Final'] = df_escalas_pag.apply(lambda row: row[f"Conjugado {row['Tipo Veiculo']} {row['Fornecedor Motorista']}"] 
+                                                            if row['Servico Conjugado'] == 'X' and (row['Tipo Veiculo'] == 'Bus' or row['Tipo Veiculo']=='Bus DD')
+                                                            else row[f"{row['Tipo Veiculo']} {row['Fornecedor Motorista']}"] 
+                                                            if row['Servico Conjugado'] != 'X' and (row['Tipo Veiculo'] == 'Bus' or row['Tipo Veiculo']=='Bus DD') else row['Valor Final'], axis=1)
 
     return df_escalas_pag
 
@@ -659,11 +649,13 @@ if gerar_mapa:
 
     # Gerando coluna valor levando em conta o tipo de veículo usado
 
-    df_escalas_pag['Valor Final'] = df_escalas_pag.apply(lambda row: row[f"Conjugado {row['Tipo Veiculo']}"] if row['Servico Conjugado'] == 'X' else row[row['Tipo Veiculo']], axis=1)
+    df_escalas_pag['Valor Final'] = df_escalas_pag.apply(lambda row: row[f"Conjugado {row['Tipo Veiculo']}"] if row['Servico Conjugado'] == 'X' and 
+                                                         row['Tipo Veiculo'] != 'Bus' and row['Tipo Veiculo']!='Bus DD' else row[row['Tipo Veiculo']] if 
+                                                         row['Tipo Veiculo'] != 'Bus' and row['Tipo Veiculo']!='Bus DD' else 0, axis=1)
 
     # Ajustar tarifário específico GIVALDO
 
-    df_escalas_pag = ajustar_verificar_tarifa_fornecedor_especifico(df_escalas_pag, 'GIVALDO', 'GIVALDO')
+    df_escalas_pag = ajustar_verificar_tarifa_fornecedor_especifico(df_escalas_pag)
 
     st.session_state.df_pag_final_forn = df_escalas_pag[['Data da Escala', 'Tipo de Servico', 'Servico', 'Fornecedor Motorista', 'Tipo Veiculo', 'Veiculo', 'Servico Conjugado', 'Valor Final']]
 
