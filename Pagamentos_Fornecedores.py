@@ -475,7 +475,7 @@ def verificar_tarifarios_especifico_fornecedor(df_escalas_pag, nome_fornecedor):
 
         st.stop()
 
-def ajustar_verificar_tarifa_fornecedor_especifico(df_escalas_pag):
+def precificar_onibus(df_escalas_pag):
 
     df_escalas_pag['Valor Final'] = df_escalas_pag.apply(lambda row: row[f"Conjugado {row['Tipo Veiculo']} {row['Fornecedor Motorista']}"] 
                                                             if row['Servico Conjugado'] == 'X' and (row['Tipo Veiculo'] == 'Bus' or row['Tipo Veiculo']=='Bus DD')
@@ -653,9 +653,9 @@ if gerar_mapa:
                                                          row['Tipo Veiculo'] != 'Bus' and row['Tipo Veiculo']!='Bus DD' else row[row['Tipo Veiculo']] if 
                                                          row['Tipo Veiculo'] != 'Bus' and row['Tipo Veiculo']!='Bus DD' else 0, axis=1)
 
-    # Ajustar tarifário específico GIVALDO
+    # Precificando os ônibus
 
-    df_escalas_pag = ajustar_verificar_tarifa_fornecedor_especifico(df_escalas_pag)
+    df_escalas_pag = precificar_onibus(df_escalas_pag)
 
     st.session_state.df_pag_final_forn = df_escalas_pag[['Data da Escala', 'Tipo de Servico', 'Servico', 'Fornecedor Motorista', 'Tipo Veiculo', 'Veiculo', 'Servico Conjugado', 'Valor Final']]
 
